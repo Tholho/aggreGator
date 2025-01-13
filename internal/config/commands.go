@@ -38,6 +38,8 @@ func (c *Commands) RegisterAll() {
 	c.register("agg", handlerAgg)
 	c.register("addfeed", handlerAddfeed)
 	c.register("feeds", handlerFeeds)
+	c.register("follow", handlerFollow)
+	c.register("following", handlerFollowing)
 }
 
 func (c *Commands) Run(s *State, cmd Command) error {
@@ -47,6 +49,65 @@ func (c *Commands) Run(s *State, cmd Command) error {
 	}
 
 	return handler(s, cmd)
+}
+
+func handlerFollowing(s *State, cmd Command) error {
+	currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Println("User not registered")
+			return err
+		}
+		return err
+	}
+	name := currentUserRecord.Name
+	res, err := s.Db.GetFeedFollowsForUser(context.Background(), name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Println("user follows nothing ?")
+			return err
+		}
+		return err
+	}
+	fmt.Println(res)
+	return nil
+}
+
+func handlerFollow(s *State, cmd Command) error {
+	if len(cmd.Args) != 1 {
+		fmt.Println("Please enter a valid url to follow")
+		return fmt.Errorf("invalid arguments")
+	}
+	feed, err := s.Db.GetFeedByURL(context.Background(), cmd.Args[0])
+	fmt.Println(cmd.Args[0])
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Println("unknown feed")
+			return err
+		}
+		return err
+	}
+	params := database.CreateFeedFollowParams{}
+	params.ID = uuid.New()
+	params.CreatedAt = time.Now()
+	params.UpdatedAt = time.Now()
+	params.FeedID = feed.ID
+	currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Println("User not registered")
+			return err
+		}
+		return err
+	}
+	params.UserID = currentUserRecord.ID
+	_, er := s.Db.CreateFeedFollow(context.Background(), params)
+	//fmt.Println(res)
+	if er != nil {
+		return er
+	}
+	fmt.Println(feed.Feedname, currentUserRecord.Name)
+	return nil
 }
 
 func handlerFeeds(s *State, cmd Command) error {
@@ -87,6 +148,16 @@ func handlerAddfeed(s *State, cmd Command) error {
 		fmt.Println("Could not create feed with parameters:\n", createFeedParams)
 	}
 	fmt.Println("--- debug: new feed ---\n", feedCreated)
+	params := database.CreateFeedFollowParams{}
+	params.ID = uuid.New()
+	params.CreatedAt = time.Now()
+	params.UpdatedAt = time.Now()
+	params.FeedID = feedCreated.ID
+	params.UserID = currentUserRecord.ID
+	_, er := s.Db.CreateFeedFollow(context.Background(), params)
+	if er != nil {
+		return er
+	}
 	return nil
 }
 
