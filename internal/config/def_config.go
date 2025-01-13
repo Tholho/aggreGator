@@ -39,7 +39,7 @@ func Read() (Config, error) {
 
 func (c *Config) SetUser(username string) error {
 	if username == "" {
-		return fmt.Errorf("Please enter a username")
+		return fmt.Errorf("please enter a username")
 	}
 	c.Current_user_name = username
 	write(c)
