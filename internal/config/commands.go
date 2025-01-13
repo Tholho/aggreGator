@@ -36,6 +36,8 @@ func (c *Commands) RegisterAll() {
 	c.register("reset", handlerReset)
 	c.register("users", handlerUsers)
 	c.register("agg", handlerAgg)
+	c.register("addfeed", handlerAddfeed)
+	c.register("feeds", handlerFeeds)
 }
 
 func (c *Commands) Run(s *State, cmd Command) error {
@@ -45,6 +47,47 @@ func (c *Commands) Run(s *State, cmd Command) error {
 	}
 
 	return handler(s, cmd)
+}
+
+func handlerFeeds(s *State, cmd Command) error {
+	//result := database.GetFeedsRow{}
+	result, err := s.Db.GetFeeds(context.Background())
+	if err != nil {
+		fmt.Println("--- debug ---\nError fetching feeds from db")
+		return err
+	}
+	for _, row := range result {
+		fmt.Println(row.Feedname, "-", row.Url, "-", row.Username)
+	}
+	return nil
+}
+
+func handlerAddfeed(s *State, cmd Command) error {
+	if len(cmd.Args) < 2 {
+		fmt.Println("Please enter a name for the feed followed by the corresponding url")
+		return fmt.Errorf("not enough arguments for command %s", cmd.Name)
+	}
+	createFeedParams := database.CreateFeedParams{}
+	createFeedParams.ID = uuid.New()
+	createFeedParams.CreatedAt = time.Now()
+	createFeedParams.UpdatedAt = time.Now()
+	createFeedParams.Name = cmd.Args[0]
+	createFeedParams.Url = cmd.Args[1]
+	currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			fmt.Println("User not registered")
+			return err
+		}
+		return err
+	}
+	createFeedParams.UserID = currentUserRecord.ID
+	feedCreated, err := s.Db.CreateFeed(context.Background(), createFeedParams)
+	if err != nil {
+		fmt.Println("Could not create feed with parameters:\n", createFeedParams)
+	}
+	fmt.Println("--- debug: new feed ---\n", feedCreated)
+	return nil
 }
 
 func handlerAgg(s *State, cmd Command) error {
