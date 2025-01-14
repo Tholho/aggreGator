@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,14 +35,14 @@ func (c *Commands) RegisterAll() {
 	c.register("login", handlerLogin)
 	c.register("register", handlerRegister)
 	c.register("reset", middlewareLoggedIn(handlerReset))
-	c.register("users", middlewareLoggedIn(handlerUsers))
+	c.register("users", handlerUsers)
 	c.register("agg", middlewareLoggedIn(handlerAgg))
 	c.register("addfeed", middlewareLoggedIn(handlerAddfeed))
 	c.register("feeds", middlewareLoggedIn(handlerFeeds))
 	c.register("follow", middlewareLoggedIn(handlerFollow))
 	c.register("following", middlewareLoggedIn(handlerFollowing))
-	c.register("following", middlewareLoggedIn(handlerFollowing))
 	c.register("unfollow", middlewareLoggedIn(handlerUnfollow))
+	c.register("browse", middlewareLoggedIn(handlerBrowse))
 }
 
 func (c *Commands) Run(s *State, cmd Command) error {
@@ -65,6 +66,28 @@ func middlewareLoggedIn(handler func(s *State, cmd Command, user database.User) 
 		}
 		return handler(s, cmd, currentUserRecord)
 	}
+}
+
+func handlerBrowse(s *State, cmd Command, user database.User) error {
+	params := database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  2,
+	}
+	if len(cmd.Args) >= 1 {
+		val, err := strconv.Atoi(cmd.Args[0])
+		if err != nil {
+			return err
+		}
+		params.Limit = int32(val)
+	}
+	posts, err := s.Db.GetPostsForUser(context.Background(), params)
+	if err != nil {
+		return err
+	}
+	for _, post := range posts {
+		fmt.Println(post)
+	}
+	return nil
 }
 
 func handlerUnfollow(s *State, cmd Command, user database.User) error {
@@ -169,12 +192,19 @@ func handlerAddfeed(s *State, cmd Command, user database.User) error {
 }
 
 func handlerAgg(s *State, cmd Command, user database.User) error {
-	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if len(cmd.Args) < 1 {
+		fmt.Println("please enter a duration like 1s, 1m, 1h, etc")
+		return fmt.Errorf("invalid argument")
+	}
+	timeBetweenRequests, err := time.ParseDuration(cmd.Args[0])
 	if err != nil {
 		return err
 	}
-	fmt.Println(feed)
-	return nil
+	ticker := time.NewTicker(timeBetweenRequests)
+	fmt.Println("Collecting feeds every", timeBetweenRequests)
+	for ; ; <-ticker.C {
+		scrapeFeeds(s)
+	}
 }
 
 func handlerLogin(s *State, cmd Command) error {
@@ -227,7 +257,7 @@ func (s *State) CreateUser(name string) (database.User, error) {
 	//(id, created_at, updated_at, name)
 }
 
-func handlerUsers(s *State, cmd Command, user database.User) error {
+func handlerUsers(s *State, cmd Command) error {
 	users, err := s.Db.GetUsers(context.Background())
 	if err != nil {
 		return err
