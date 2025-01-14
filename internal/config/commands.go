@@ -33,13 +33,15 @@ func (c *Commands) RegisterAll() {
 	c.handlers = make(map[string]func(*State, Command) error)
 	c.register("login", handlerLogin)
 	c.register("register", handlerRegister)
-	c.register("reset", handlerReset)
-	c.register("users", handlerUsers)
-	c.register("agg", handlerAgg)
-	c.register("addfeed", handlerAddfeed)
-	c.register("feeds", handlerFeeds)
-	c.register("follow", handlerFollow)
-	c.register("following", handlerFollowing)
+	c.register("reset", middlewareLoggedIn(handlerReset))
+	c.register("users", middlewareLoggedIn(handlerUsers))
+	c.register("agg", middlewareLoggedIn(handlerAgg))
+	c.register("addfeed", middlewareLoggedIn(handlerAddfeed))
+	c.register("feeds", middlewareLoggedIn(handlerFeeds))
+	c.register("follow", middlewareLoggedIn(handlerFollow))
+	c.register("following", middlewareLoggedIn(handlerFollowing))
+	c.register("following", middlewareLoggedIn(handlerFollowing))
+	c.register("unfollow", middlewareLoggedIn(handlerUnfollow))
 }
 
 func (c *Commands) Run(s *State, cmd Command) error {
@@ -51,16 +53,37 @@ func (c *Commands) Run(s *State, cmd Command) error {
 	return handler(s, cmd)
 }
 
-func handlerFollowing(s *State, cmd Command) error {
-	currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Println("User not registered")
+func middlewareLoggedIn(handler func(s *State, cmd Command, user database.User) error) func(*State, Command) error {
+	return func(s *State, cmd Command) error {
+		currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				fmt.Println("User not registered")
+				return err
+			}
 			return err
 		}
+		return handler(s, cmd, currentUserRecord)
+	}
+}
+
+func handlerUnfollow(s *State, cmd Command, user database.User) error {
+	if len(cmd.Args) < 1 {
+		fmt.Println("Please enter a valid URL")
+		return fmt.Errorf("invalid arguments")
+	}
+	params := database.DeleteFeedFollowParams{}
+	params.Url = cmd.Args[0]
+	params.UserID = user.ID
+	err := s.Db.DeleteFeedFollow(context.Background(), params)
+	if err != nil {
 		return err
 	}
-	name := currentUserRecord.Name
+	return nil
+}
+
+func handlerFollowing(s *State, cmd Command, user database.User) error {
+	name := user.Name
 	res, err := s.Db.GetFeedFollowsForUser(context.Background(), name)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -73,7 +96,7 @@ func handlerFollowing(s *State, cmd Command) error {
 	return nil
 }
 
-func handlerFollow(s *State, cmd Command) error {
+func handlerFollow(s *State, cmd Command, user database.User) error {
 	if len(cmd.Args) != 1 {
 		fmt.Println("Please enter a valid url to follow")
 		return fmt.Errorf("invalid arguments")
@@ -92,25 +115,17 @@ func handlerFollow(s *State, cmd Command) error {
 	params.CreatedAt = time.Now()
 	params.UpdatedAt = time.Now()
 	params.FeedID = feed.ID
-	currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Println("User not registered")
-			return err
-		}
-		return err
-	}
-	params.UserID = currentUserRecord.ID
+	params.UserID = user.ID
 	_, er := s.Db.CreateFeedFollow(context.Background(), params)
 	//fmt.Println(res)
 	if er != nil {
 		return er
 	}
-	fmt.Println(feed.Feedname, currentUserRecord.Name)
+	fmt.Println(feed.Feedname, user.Name)
 	return nil
 }
 
-func handlerFeeds(s *State, cmd Command) error {
+func handlerFeeds(s *State, cmd Command, user database.User) error {
 	//result := database.GetFeedsRow{}
 	result, err := s.Db.GetFeeds(context.Background())
 	if err != nil {
@@ -123,7 +138,7 @@ func handlerFeeds(s *State, cmd Command) error {
 	return nil
 }
 
-func handlerAddfeed(s *State, cmd Command) error {
+func handlerAddfeed(s *State, cmd Command, user database.User) error {
 	if len(cmd.Args) < 2 {
 		fmt.Println("Please enter a name for the feed followed by the corresponding url")
 		return fmt.Errorf("not enough arguments for command %s", cmd.Name)
@@ -134,15 +149,7 @@ func handlerAddfeed(s *State, cmd Command) error {
 	createFeedParams.UpdatedAt = time.Now()
 	createFeedParams.Name = cmd.Args[0]
 	createFeedParams.Url = cmd.Args[1]
-	currentUserRecord, err := s.Db.GetUser(context.Background(), s.CfgPtr.Current_user_name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Println("User not registered")
-			return err
-		}
-		return err
-	}
-	createFeedParams.UserID = currentUserRecord.ID
+	createFeedParams.UserID = user.ID
 	feedCreated, err := s.Db.CreateFeed(context.Background(), createFeedParams)
 	if err != nil {
 		fmt.Println("Could not create feed with parameters:\n", createFeedParams)
@@ -153,7 +160,7 @@ func handlerAddfeed(s *State, cmd Command) error {
 	params.CreatedAt = time.Now()
 	params.UpdatedAt = time.Now()
 	params.FeedID = feedCreated.ID
-	params.UserID = currentUserRecord.ID
+	params.UserID = user.ID
 	_, er := s.Db.CreateFeedFollow(context.Background(), params)
 	if er != nil {
 		return er
@@ -161,7 +168,7 @@ func handlerAddfeed(s *State, cmd Command) error {
 	return nil
 }
 
-func handlerAgg(s *State, cmd Command) error {
+func handlerAgg(s *State, cmd Command, user database.User) error {
 	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
 	if err != nil {
 		return err
@@ -176,15 +183,6 @@ func handlerLogin(s *State, cmd Command) error {
 		fmt.Println("Login command requires an argument")
 		return fmt.Errorf("login command requires an argument")
 	}
-	userGet, err := s.Db.GetUser(context.Background(), cmd.Args[0])
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Println("User not found")
-			return err
-		}
-		return err
-	}
-	fmt.Println("THIS IS", userGet)
 	s.CfgPtr.SetUser(cmd.Args[0])
 	return nil
 }
@@ -194,16 +192,17 @@ func handlerRegister(s *State, cmd Command) error {
 		fmt.Println("Register command requires an argument")
 		return fmt.Errorf("register command requires an argument")
 	}
-	err := s.CreateUser(cmd.Args[0])
+	newUser, err := s.CreateUser(cmd.Args[0])
 	if err != nil {
 		return err
 	}
 	cmd.Name = "login"
+	cmd.Args[0] = newUser.Name
 	handlerLogin(s, cmd)
 	return nil
 }
 
-func (s *State) CreateUser(name string) error {
+func (s *State) CreateUser(name string) (database.User, error) {
 	/*	userGet, err := s.Db.GetUser(context.Background(), name)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -221,14 +220,14 @@ func (s *State) CreateUser(name string) error {
 	createUserParams.UpdatedAt = time.Now()
 	userCreate, err := s.Db.CreateUser(context.Background(), createUserParams)
 	if err != nil {
-		return err
+		return database.User{}, err
 	}
 	fmt.Println("THIS IS", userCreate)
-	return nil
+	return userCreate, nil
 	//(id, created_at, updated_at, name)
 }
 
-func handlerUsers(s *State, cmd Command) error {
+func handlerUsers(s *State, cmd Command, user database.User) error {
 	users, err := s.Db.GetUsers(context.Background())
 	if err != nil {
 		return err
@@ -243,7 +242,7 @@ func handlerUsers(s *State, cmd Command) error {
 	return nil
 }
 
-func handlerReset(s *State, cmd Command) error {
+func handlerReset(s *State, cmd Command, user database.User) error {
 	err := s.Db.DeleteAllUsers(context.Background())
 	if err != nil {
 		fmt.Println("Did not fulfil reset request")
