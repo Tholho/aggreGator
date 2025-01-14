@@ -50,7 +50,6 @@ func (c *Commands) Run(s *State, cmd Command) error {
 	if !exists {
 		return fmt.Errorf("error: unknown command '%s'", cmd.Name)
 	}
-
 	return handler(s, cmd)
 }
 
@@ -85,7 +84,8 @@ func handlerBrowse(s *State, cmd Command, user database.User) error {
 		return err
 	}
 	for _, post := range posts {
-		fmt.Println(post)
+		fmt.Println(post.Title)
+		fmt.Println(post.Description)
 	}
 	return nil
 }
@@ -177,7 +177,7 @@ func handlerAddfeed(s *State, cmd Command, user database.User) error {
 	if err != nil {
 		fmt.Println("Could not create feed with parameters:\n", createFeedParams)
 	}
-	fmt.Println("--- debug: new feed ---\n", feedCreated)
+	//fmt.Println("--- debug: new feed ---\n", feedCreated)
 	params := database.CreateFeedFollowParams{}
 	params.ID = uuid.New()
 	params.CreatedAt = time.Now()
@@ -208,7 +208,6 @@ func handlerAgg(s *State, cmd Command, user database.User) error {
 }
 
 func handlerLogin(s *State, cmd Command) error {
-	//fmt.Println(cmd.Args)
 	if len(cmd.Args) < 1 {
 		fmt.Println("Login command requires an argument")
 		return fmt.Errorf("login command requires an argument")
@@ -233,16 +232,6 @@ func handlerRegister(s *State, cmd Command) error {
 }
 
 func (s *State) CreateUser(name string) (database.User, error) {
-	/*	userGet, err := s.Db.GetUser(context.Background(), name)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				fmt.Println("User not found")
-				return err
-			}
-			return err
-		}
-		fmt.Println("THIS IS", userGet)
-	*/
 	createUserParams := database.CreateUserParams{}
 	createUserParams.ID = uuid.New()
 	createUserParams.Name = name
@@ -252,9 +241,7 @@ func (s *State) CreateUser(name string) (database.User, error) {
 	if err != nil {
 		return database.User{}, err
 	}
-	fmt.Println("THIS IS", userCreate)
 	return userCreate, nil
-	//(id, created_at, updated_at, name)
 }
 
 func handlerUsers(s *State, cmd Command) error {

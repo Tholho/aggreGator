@@ -226,7 +226,7 @@ WITH target_feed_id AS (
 )
 DELETE FROM feed_follows
 WHERE feed_follows.user_id = $1
-AND feed_id = (SELECT id from target_feed_id)
+AND feed_follows.feed_id = (SELECT id from target_feed_id)
 `
 
 type DeleteFeedFollowParams struct {

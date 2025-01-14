@@ -44,7 +44,6 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	if err != nil {
 		return nil, err
 	}
-	//unescapedData := html.UnescapeString(string(rawData))
 	feed := RSSFeed{}
 	err = xml.Unmarshal(rawData, &feed)
 	if err != nil {
@@ -59,9 +58,9 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	}
 	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
 	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
-	for _, val := range feed.Channel.Item {
-		val.Description = html.UnescapeString(val.Description)
-		val.Title = html.UnescapeString(val.Title)
+	for i, val := range feed.Channel.Item {
+		feed.Channel.Item[i].Description = html.UnescapeString(val.Description)
+		feed.Channel.Item[i].Title = html.UnescapeString(val.Title)
 	}
 	return &feed, nil
 }
@@ -85,16 +84,6 @@ func scrapeFeeds(s *State) error {
 		fmt.Println(err)
 		return err
 	}
-	//fmt.Println(rssFeed.Channel.Item[0].Description)
-	/*  id UUID PRIMARY KEY,
-	    created_at TIMESTAMP NOT NULL,
-	    updated_at TIMESTAMP NOT NULL,
-	    title TEXT NOT NULL,
-	    url TEXT UNIQUE NOT NULL,
-	    description TEXT,
-	    published_at TIMESTAMP NOT NULL,
-	    feed_id UUID NOT NULL REFERENCES feeds (id) ON DELETE CASCADE
-	);*/
 
 	for _, val := range rssFeed.Channel.Item {
 		layout := "Mon, 02 Jan 2006 15:04:05 +0000"
