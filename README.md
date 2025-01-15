@@ -26,7 +26,7 @@ If you don't know how to install Go software I'm supposed to tell you but nothin
 
 https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies
 
-**tl;dr : Assuming you installed postgres and golang... Download files, run "go install" from folder, then run aggreGator **
+**tl;dr : Assuming you installed postgres and golang... Download files, run "go install" from folder, then run aggreGator**
 
 **Last but not least**
 
