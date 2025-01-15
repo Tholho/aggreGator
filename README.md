@@ -2,7 +2,7 @@ This Project was done with the guidance of boot.dev.
 
 It is an RSSFlux aggre-gator. Hence the name. The joke is not mine so spare me please.
 
-The concept is to automatically fetch RSS feeds from a list of followed feeds. It allows multipler users to have different their own selection of feeds, but allows for each to consult the existing feeds in the db and to follow them if they wish to.
+The concept is to automatically fetch RSS feeds from a list of followed feeds. It allows multipler users to have their own selection of different feeds, but allows for each user to consult the existing feeds in the db and to follow them if they wish to.
 
 To run this software, unless I provide a built package (which really is not something anyone would require as far as I reckon), you'll need Golang. Additionnally, you need to have postgres installed. 
 
