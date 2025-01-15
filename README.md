@@ -10,17 +10,17 @@ To run this software, unless I provide a built package (which really is not some
 
 Every feature is pretty basic, but those basics are covered as follows :
 
-"register" : ie. 'aggreGator register "username"' adds the user to the db and unlocks other commands. Automatically log in the newly registered user
-"login" : ie. 'aggreGator login "username"' | Provided user is registered, will run the following commands for the current user
-"reset" : admin feature, clears the users data
-"users" : lists all users
-"agg" : ie. 'aggreGator agg *time duration*' (such as 1s if you want to DDOS a server, or 5 min if you're reasonable but addicted to news), will refresh the posts db (and make it grow, no cleanup feature yet)    
-"addfeed" : ie. 'aggreGator addfeed *url*' | Will add a new RSSfeed AND automatically follow it for the current user
-"feeds" : lists existing feeds
-"follow" : ie. 'aggreGator follow *url*' | Follow an already stored feed
-"unfollow" : reverts the previous command, url required. (unfollow *url*)
-"following" :  lists existing follows for the current user
-"browse" : optional limit parameter | ie 'aggreGator browse' OR 'browse *limit number*' | will display a default 2 (or provided *limit number*) most recent posts from all followed feeds for the current user
+* "register" : ie. 'aggreGator register "username"' adds the user to the db and unlocks other commands. Automatically log in the newly registered user
+* "login" : ie. 'aggreGator login "username"' | Provided user is registered, will run the following commands for the current user
+* "reset" : admin feature, clears the users data
+* "users" : lists all users
+* "agg" : ie. 'aggreGator agg *time duration*' (such as 1s if you want to DDOS a server, or 5 min if you're reasonable but addicted to news), will refresh the posts db (and make it grow, no cleanup feature yet)    
+* "addfeed" : ie. 'aggreGator addfeed *url*' | Will add a new RSSfeed AND automatically follow it for the current user
+* "feeds" : lists existing feeds
+* "follow" : ie. 'aggreGator follow *url*' | Follow an already stored feed
+* "unfollow" : reverts the previous command, url required. (unfollow *url*)
+* "following" :  lists existing follows for the current user
+* "browse" : optional limit parameter | ie 'aggreGator browse' OR 'browse *limit number*' | will display a default 2 (or provided *limit number*) most recent posts from all followed feeds for the current user
 
 If you don't know how to install Go software I'm supposed to tell you but nothing beats the original so here you go :
 
